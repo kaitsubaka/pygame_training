@@ -56,6 +56,21 @@ def draw_lives(surf,x,y,lives,img):
         img_rect.y = y
         surf.blit(img,img_rect)
 
+def show_go_screen():
+    screen.blit(bacground, bacground_rect)
+    draw_text(screen,'STHUP!!', 64, WIDTH/2, HEIGHT/4)
+    draw_text(screen,"Arrow key move, Space to fire", 22, WIDTH/2, HEIGHT/2)
+    draw_text(screen, 'Press a key to begin', 18, WIDTH/2, HEIGHT*3 /4)
+    pygame.display.flip()
+    waiting = True
+    while waiting:
+        clock.tick(FPS)
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:
+                pygame.quit()
+            if e.type == pygame.KEYUP:
+                waiting = False
+
 class Ship(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
@@ -260,25 +275,25 @@ ship_explo_snd = pygame.mixer.Sound(os.path.join(snd_dir,'rumble1.ogg'))
 pygame.mixer.music.load(os.path.join(snd_dir,"tgfcoder-FrozenJam-SeamlessLoop.ogg"))
 pygame.mixer.music.set_volume(0.4)
 
-
-
-all_sprites = pygame.sprite.Group()
-mobs = pygame.sprite.Group()
-bullets = pygame.sprite.Group()
-powerups = pygame.sprite.Group()
-ship = Ship()
-all_sprites.add(ship)
-for i in range(8):
-    spawn_mob()
-score = 0
-
-
 # game loop
+game_over = True
 running = True
 # keep loop running at the right speed
 pygame.mixer.music.play(loops=-1)
 while running:
     clock.tick(FPS)
+    if game_over:
+        game_over= False
+        show_go_screen()
+        all_sprites = pygame.sprite.Group()
+        mobs = pygame.sprite.Group()
+        bullets = pygame.sprite.Group()
+        powerups = pygame.sprite.Group()
+        ship = Ship()
+        all_sprites.add(ship)
+        for i in range(8):
+            spawn_mob()
+        score = 0
     # Process input (events)
     for e in pygame.event.get():
         if e.type == pygame.QUIT:
@@ -327,7 +342,7 @@ while running:
             ship.powerup()
     #if player died and the explosion has finished
     if ship.lives == 0 and not death_explosion.alive():
-        running = False        
+        game_over = True       
     # Draw / render
     screen.fill(BLACK)
     screen.blit(bacground, bacground_rect)
