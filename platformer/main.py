@@ -34,19 +34,25 @@ class Game():
                 self.highscore = 0
         #load spritesheet img
         self.spritesheet = SpriteSheet(os.path.join(img_dir,SPRITE_SHEET))
+        #clouds
+        self.cloud_imgs = []
+        for i in range(1,4):
+            self.cloud_imgs.append(pg.image.load(os.path.join(img_dir,'cloud{}.png'.format(i))).convert())
         self.jump_sound = pg.mixer.Sound(os.path.join(self.snd_dir,'Jump33.wav'))
+        self.boost_sound = pg.mixer.Sound(os.path.join(self.snd_dir,'Boost16.wav'))
 
     def new(self):
         # Start a new game
         self.score = 0
-        self.all_sprites = pg.sprite.Group()
+        self.all_sprites = pg.sprite.LayeredUpdates()
         self.platforms = pg.sprite.Group()
+        self.powerups = pg.sprite.Group()
+        self.mobs = pg.sprite.Group()
+        self.clouds = pg.sprite.Group()
         self.player = Player(self)
-        self.all_sprites.add(self.player)
         for plat in PLATFORM_LIST:
-            p = Platform(self,*plat)
-            self.all_sprites.add(p)
-            self.platforms.add(p)
+            Platform(self,*plat)
+        self.mob_timer = pg.time.get_ticks()
         pg.mixer.music.load(os.path.join(self.snd_dir, 'Yippee.ogg'))
         self.run()
 
@@ -63,27 +69,56 @@ class Game():
         
     
     def update(self):
+        # Spawn a mob?
+        now = pg.time.get_ticks()
+        if now - self.mob_timer > MOB_FREQ + random.choice([-1000,-500,0,500,1000]):
+            self.mob_timer = now
+            Mob(self)
+        # Hit a mob?
+        mob_hits = pg.sprite.spritecollide(self.player, self.mobs, False,pg.sprite.collide_mask)
+        if mob_hits:
+            self.playing = False
+
         # Game loop - Update
         self.all_sprites.update()
         if self.player.vel.y > 0:
+            
             hits = pg.sprite.spritecollide(self.player,self.platforms, False)
+            
             if hits:
                 lowest = hits[0]
                 for hit in hits:
                     if lowest.rect.bottom < hit.rect.bottom:
                         lowest = hit
-                if self.player.pos.y < lowest.rect.centery:
-                    self.player.pos.y = lowest.rect.top
-                    self.player.vel.y = 0
-                    self.player.jumping = False
+                if self.player.pos.x < lowest.rect.right + 10 and self.player.pos.x > lowest.rect.left - 10:
+                    if self.player.pos.y < lowest.rect.centery:
+                        self.player.pos.y = lowest.rect.top
+                        self.player.vel.y = 0
+                        self.player.jumping = False
         # if player reaches top 1/4 of screen
-        if self.player.rect.top <= HEIGHT/3:
+        if self.player.rect.top <= HEIGHT/4:
+            if random.randrange(100) < 20:
+                Cloud(self)
             self.player.pos.y += int(max(abs(self.player.vel.y),3))
+            for cloud in self.clouds:
+                cloud.rect.y += int(max(abs(self.player.vel.y/2),2))
+            for mob in self.mobs:
+                mob.rect.y += int(max(abs(self.player.vel.y),3))
+                if mob.rect.top >= HEIGHT:
+                    mob.kill()
             for plat in self.platforms:
                 plat.rect.y += int(max(abs(self.player.vel.y),3))
                 if plat.rect.top >= HEIGHT:
                     plat.kill()
                     self.score += 10
+            
+        # If player hits powerup
+        pow_hits = pg.sprite.spritecollide(self.player,self.powerups,True)
+        for pow in pow_hits:
+            if pow.type == 'boost':
+                self.boost_sound.play()
+                self.player.vel.y = -BOOS_POWER
+                self.player.jumping = False
         # Die!
         if self.player.rect.bottom >HEIGHT:
             for sprite in self.all_sprites:
@@ -95,9 +130,7 @@ class Game():
         # Spawn new platform to keep some average number
         while len(self.platforms)<6:
             width = random.randrange(50,100)
-            p = Platform(self,random.randrange(0,WIDTH-width), random.randrange(-75, -30))
-            self.platforms.add(p)
-            self.all_sprites.add(p)
+            Platform(self,random.randrange(0,WIDTH-width), random.randrange(-75, -30))
         
 
 
@@ -119,7 +152,6 @@ class Game():
         # Game loop - Draw
         self.screen.fill(BG_COLOR)
         self.all_sprites.draw(self.screen)
-        self.screen.blit(self.player.image,self.player.rect)
         self.draw_text(str(self.score),22,WHITE,int(WIDTH/2),15)
         # *After* drawing everything, flip the display
         pg.display.update()
