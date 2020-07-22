@@ -15,11 +15,17 @@ class Game():
         self.screen = pg.display.set_mode((WIDTH, HEIGHT))
         pg.display.set_caption(TITLE)
         self.clock = pg.time.Clock()
+        pg.key.set_repeat(500,100)
         self.running = True
 
     def new(self):
         '''Start a new game'''
-        pass
+        self.all_sprites = pg.sprite.Group()
+        self.walls = pg.sprite.Group()
+        self.player = Player(self,0,0)
+        for n in range(10,20):
+            Wall(self,n,5)
+        
 
     def run(self):
         '''Gaem loop'''
@@ -36,6 +42,7 @@ class Game():
 
     def update(self):
         '''Gaem loop - Update'''
+        self.all_sprites.update()
         pass
 
     def events(self):
@@ -46,16 +53,28 @@ class Game():
                 if self.playing:
                     self.playing = False
                 self.running = False
+            if e.type == pg.KEYDOWN:
+                if e.key == pg.K_LEFT:
+                    self.player.move(dx=-1)
+                if e.key == pg.K_RIGHT:
+                    self.player.move(dx=1)
+                if e.key == pg.K_UP:
+                    self.player.move(dy=-1)
+                if e.key == pg.K_DOWN: 
+                    self.player.move(dy=1)
     def draw_grid(self):
         for x in range(0, WIDTH, TILESIZE):
-            pg.draw.line(self.screen,BLUE, (x,0),(x,HEIGHT))
+            pg.draw.line(self.screen,LIGHTGREY, (x,0),(x,HEIGHT))
         for y in range(0, HEIGHT, TILESIZE):
-            pg.draw.line(self.screen,BLUE, (0,y),(WIDTH,y))
+            pg.draw.line(self.screen,LIGHTGREY, (0,y),(WIDTH,y))
+
     def draw(self):
         '''Gaem loop - Draw'''
-        self.screen.fill(BLACK)
-        # *After* drawing everything, flip the display
+        self.screen.fill(BGCOLOR)
         self.draw_grid()
+        self.all_sprites.draw(self.screen)
+        # *After* drawing everything, flip the display
+
         pg.display.flip()
 
 if __name__ == "__main__":
